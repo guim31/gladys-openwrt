@@ -1,6 +1,6 @@
 {
   "name": "gladys-openwrt",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "OpenWrt routers and access points for Gladys Assistant: presence, router health, WAN, guest Wi-Fi.",
   "type": "module",

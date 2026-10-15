@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-15
+
 ### Added
 
 - OpenWrt routers and access points (OpenWrt 18.06 or later) through ubus over
@@ -34,4 +36,5 @@ the notes of the version's GitHub Release.
   screen.
 - Texts and documentation in English, French, German and Spanish.
 
-[Unreleased]: https://github.com/guim31/gladys-openwrt/commits/main
+[Unreleased]: https://github.com/guim31/gladys-openwrt/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/guim31/gladys-openwrt/releases/tag/v1.0.1
