@@ -1,177 +1,777 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "OpenWrt",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "OpenWrt routers: presence of your devices, router health, WAN rates and outages, guest Wi-Fi.",
+    "fr": "Routeurs OpenWrt : présence des appareils, santé du routeur, débits et coupures WAN, Wi-Fi invité.",
+    "de": "OpenWrt-Router: Anwesenheit deiner Geräte, Router-Zustand, WAN-Raten und Ausfälle, Gäste-WLAN.",
+    "es": "Routers OpenWrt: presencia de dispositivos, estado del router, caudal y cortes WAN, Wi-Fi invitados."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-openwrt:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-openwrt/main/cover.png",
+  "categories": ["network"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your OpenWrt router",
+        "fr": "Votre routeur OpenWrt",
+        "de": "Dein OpenWrt-Router",
+        "es": "Su router OpenWrt"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "OpenWrt 18.06 or later, with rpcd and uhttpd-mod-ubus (installed with LuCI). Create a dedicated rpcd user with the ACL of the documentation: read only is enough for presence and measures.",
+        "fr": "OpenWrt 18.06 ou plus récent, avec rpcd et uhttpd-mod-ubus (installés avec LuCI). Créez un utilisateur rpcd dédié avec l'ACL de la documentation : la lecture seule suffit pour la présence et les mesures.",
+        "de": "OpenWrt 18.06 oder neuer, mit rpcd und uhttpd-mod-ubus (mit LuCI installiert). Lege einen eigenen rpcd-Benutzer mit der ACL aus der Doku an: Nur-Lesen reicht für Anwesenheit und Messwerte.",
+        "es": "OpenWrt 18.06 o posterior, con rpcd y uhttpd-mod-ubus (instalados con LuCI). Cree un usuario rpcd dedicado con la ACL de la documentación: la solo lectura basta para la presencia y las medidas."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://openwrt.org/docs/techref/ubus",
+          "label": {
+            "en": "ubus over HTTP (OpenWrt)",
+            "fr": "ubus par HTTP (OpenWrt)",
+            "de": "ubus über HTTP (OpenWrt)",
+            "es": "ubus por HTTP (OpenWrt)"
+          }
+        },
+        {
+          "url": "https://openwrt.org/docs/techref/rpcd",
+          "label": {
+            "en": "rpcd users and ACLs",
+            "fr": "Utilisateurs et ACL de rpcd",
+            "de": "rpcd-Benutzer und ACLs",
+            "es": "Usuarios y ACL de rpcd"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "host",
+      "type": "string",
+      "label": {
+        "en": "Router address",
+        "fr": "Adresse du routeur",
+        "de": "Adresse des Routers",
+        "es": "Dirección del router"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
+      "description": {
+        "en": "IP address or name of the router, with :port if its web server does not use the default port.",
+        "fr": "Adresse IP ou nom du routeur, avec :port si son serveur web n'utilise pas le port par défaut.",
+        "de": "IP-Adresse oder Name des Routers, mit :Port, wenn sein Webserver nicht den Standardport nutzt.",
+        "es": "Dirección IP o nombre del router, con :puerto si su servidor web no usa el puerto predeterminado."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.1",
+        "fr": "ex. 192.168.1.1",
+        "de": "z. B. 192.168.1.1",
+        "es": "p. ej. 192.168.1.1"
+      },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "default": ""
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "https",
+      "type": "boolean",
+      "label": {
+        "en": "Use HTTPS",
+        "fr": "Utiliser HTTPS",
+        "de": "HTTPS verwenden",
+        "es": "Usar HTTPS"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "Encrypts the password on your network. OpenWrt serves HTTPS when luci-ssl is installed. A router that redirects to HTTPS is followed anyway.",
+        "fr": "Chiffre le mot de passe sur votre réseau. OpenWrt sert HTTPS quand luci-ssl est installé. Un routeur qui redirige vers HTTPS est suivi de toute façon.",
+        "de": "Verschlüsselt das Passwort in deinem Netzwerk. OpenWrt bietet HTTPS an, wenn luci-ssl installiert ist. Eine Weiterleitung auf HTTPS wird ohnehin befolgt.",
+        "es": "Cifra la contraseña en su red. OpenWrt sirve HTTPS cuando luci-ssl está instalado. Un router que redirige a HTTPS se sigue de todos modos."
+      },
+      "default": false
     },
     {
-      "key": "unit",
+      "key": "allow_self_signed",
+      "type": "boolean",
+      "label": {
+        "en": "Accept a self-signed certificate",
+        "fr": "Accepter un certificat auto-signé",
+        "de": "Selbstsigniertes Zertifikat akzeptieren",
+        "es": "Aceptar un certificado autofirmado"
+      },
+      "description": {
+        "en": "OpenWrt makes a self-signed certificate at first boot. Tick it only for your own router.",
+        "fr": "OpenWrt crée un certificat auto-signé au premier démarrage. Ne cochez que pour votre propre routeur.",
+        "de": "OpenWrt erzeugt beim ersten Start ein selbstsigniertes Zertifikat. Aktiviere es nur für deinen eigenen Router.",
+        "es": "OpenWrt crea un certificado autofirmado en el primer arranque. Márquelo solo para su propio router."
+      },
+      "default": false
+    },
+    {
+      "key": "username",
+      "type": "string",
+      "label": {
+        "en": "User name",
+        "fr": "Nom d'utilisateur",
+        "de": "Benutzername",
+        "es": "Nombre de usuario"
+      },
+      "description": {
+        "en": "A login of /etc/config/rpcd, ideally a dedicated read-only one (see the documentation).",
+        "fr": "Un login de /etc/config/rpcd, idéalement un utilisateur dédié en lecture seule (voir la documentation).",
+        "de": "Ein Login aus /etc/config/rpcd, am besten ein eigener Nur-Lese-Benutzer (siehe Doku).",
+        "es": "Un login de /etc/config/rpcd, idealmente un usuario dedicado de solo lectura (vea la documentación)."
+      },
+      "placeholder": {
+        "en": "e.g. gladys",
+        "fr": "ex. gladys",
+        "de": "z. B. gladys",
+        "es": "p. ej. gladys"
+      },
+      "required": true,
+      "default": ""
+    },
+    {
+      "key": "password",
+      "type": "secret",
+      "label": {
+        "en": "Password",
+        "fr": "Mot de passe",
+        "de": "Passwort",
+        "es": "Contraseña"
+      }
+    },
+    {
+      "key": "api",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
+      "label": {
+        "en": "Interface",
+        "fr": "Interface",
+        "de": "Schnittstelle",
+        "es": "Interfaz"
+      },
+      "description": {
+        "en": "Automatic uses ubus (/ubus) and falls back on the LuCI RPC API (luci-mod-rpc) only when the router has no /ubus.",
+        "fr": "Automatique utilise ubus (/ubus) et se replie sur l'API LuCI RPC (luci-mod-rpc) seulement si le routeur n'a pas /ubus.",
+        "de": "Automatisch nutzt ubus (/ubus) und weicht nur dann auf die LuCI-RPC-API (luci-mod-rpc) aus, wenn der Router kein /ubus hat.",
+        "es": "Automático usa ubus (/ubus) y recurre a la API LuCI RPC (luci-mod-rpc) solo si el router no tiene /ubus."
+      },
+      "default": "auto",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "auto",
+          "label": {
+            "en": "Automatic",
+            "fr": "Automatique",
+            "de": "Automatisch",
+            "es": "Automático"
+          }
+        },
+        {
+          "value": "ubus",
+          "label": {
+            "en": "ubus (recommended)",
+            "fr": "ubus (recommandé)",
+            "de": "ubus (empfohlen)",
+            "es": "ubus (recomendado)"
+          }
+        },
+        {
+          "value": "luci_rpc",
+          "label": {
+            "en": "LuCI RPC (presence only)",
+            "fr": "LuCI RPC (présence seule)",
+            "de": "LuCI RPC (nur Anwesenheit)",
+            "es": "LuCI RPC (solo presencia)"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+      "key": "poll_interval",
+      "type": "select",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
       },
-      "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "description": {
+        "en": "How often the router is read. The rates are averages over this interval.",
+        "fr": "Fréquence de lecture du routeur. Les débits sont des moyennes sur cet intervalle.",
+        "de": "Wie oft der Router abgefragt wird. Die Raten sind Mittelwerte über dieses Intervall.",
+        "es": "Frecuencia de lectura del router. Los caudales son promedios sobre este intervalo."
+      },
+      "default": "30",
+      "options": [
+        {
+          "value": "10",
+          "label": {
+            "en": "10 seconds",
+            "fr": "10 secondes",
+            "de": "10 Sekunden",
+            "es": "10 segundos"
+          }
+        },
+        {
+          "value": "15",
+          "label": {
+            "en": "15 seconds",
+            "fr": "15 secondes",
+            "de": "15 Sekunden",
+            "es": "15 segundos"
+          }
+        },
+        {
+          "value": "30",
+          "label": {
+            "en": "30 seconds",
+            "fr": "30 secondes",
+            "de": "30 Sekunden",
+            "es": "30 segundos"
+          }
+        },
+        {
+          "value": "60",
+          "label": { "en": "1 minute", "fr": "1 minute", "de": "1 Minute", "es": "1 minuto" }
+        }
+      ]
+    },
+    {
+      "key": "wan_interfaces",
+      "type": "string",
+      "label": {
+        "en": "WAN interfaces",
+        "fr": "Interfaces WAN",
+        "de": "WAN-Schnittstellen",
+        "es": "Interfaces WAN"
+      },
+      "description": {
+        "en": "Names of Network → Interfaces, separated by commas, up to four. Empty: wan and the interfaces holding the default route.",
+        "fr": "Noms de Réseau → Interfaces, séparés par des virgules, quatre au plus. Vide : wan et les interfaces qui portent la route par défaut.",
+        "de": "Namen aus Netzwerk → Schnittstellen, durch Kommas getrennt, höchstens vier. Leer: wan und die Schnittstellen mit der Standardroute.",
+        "es": "Nombres de Red → Interfaces, separados por comas, cuatro como máximo. Vacío: wan y las interfaces con la ruta predeterminada."
+      },
+      "placeholder": {
+        "en": "e.g. wan, wwan",
+        "fr": "ex. wan, wwan",
+        "de": "z. B. wan, wwan",
+        "es": "p. ej. wan, wwan"
+      },
+      "default": ""
+    },
+    {
+      "key": "presence_section",
+      "type": "section",
+      "label": {
+        "en": "Presence",
+        "fr": "Présence",
+        "de": "Anwesenheit",
+        "es": "Presencia"
+      },
+      "description": {
+        "en": "Add the devices to follow from the Discovery tab: each one becomes a presence sensor, present while it is connected to the Wi-Fi of the router.",
+        "fr": "Ajoutez les appareils à suivre depuis l'onglet Découverte : chacun devient un capteur de présence, présent tant qu'il est connecté au Wi-Fi du routeur.",
+        "de": "Füge die zu verfolgenden Geräte im Tab „Entdecken“ hinzu: Jedes wird ein Anwesenheitssensor, anwesend, solange es mit dem WLAN des Routers verbunden ist.",
+        "es": "Añada los dispositivos que quiera seguir desde la pestaña Descubrir: cada uno se convierte en un sensor de presencia, presente mientras está conectado al Wi-Fi del router."
+      }
+    },
+    {
+      "key": "away_delay",
+      "type": "number",
+      "label": {
+        "en": "Departure delay (minutes)",
+        "fr": "Délai de départ (minutes)",
+        "de": "Abwesenheitsverzögerung (Minuten)",
+        "es": "Retardo de salida (minutos)"
+      },
+      "description": {
+        "en": "A device no longer seen counts as away only after this delay: a phone asleep leaves the Wi-Fi for a few minutes.",
+        "fr": "Un appareil qui n'est plus vu ne compte comme absent qu'après ce délai : un téléphone en veille quitte le Wi-Fi quelques minutes.",
+        "de": "Ein nicht mehr gesehenes Gerät gilt erst nach dieser Verzögerung als abwesend: Ein schlafendes Handy verlässt das WLAN für ein paar Minuten.",
+        "es": "Un dispositivo que ya no se ve solo cuenta como ausente tras este retardo: un teléfono en reposo deja el Wi-Fi unos minutos."
+      },
+      "default": 5,
+      "min": 0,
+      "max": 60
+    },
+    {
+      "key": "presence_dhcp",
+      "type": "boolean",
+      "label": {
+        "en": "Count a DHCP lease as present",
+        "fr": "Compter un bail DHCP comme présent",
+        "de": "DHCP-Lease als anwesend zählen",
+        "es": "Contar una concesión DHCP como presente"
+      },
+      "description": {
+        "en": "A lease lasts until it expires (12 h by default), long after the device left: tick it only for wired devices nothing else sees.",
+        "fr": "Un bail dure jusqu'à son expiration (12 h par défaut), bien après le départ de l'appareil : ne cochez que pour des appareils filaires que rien d'autre ne voit.",
+        "de": "Ein Lease gilt bis zu seinem Ablauf (standardmäßig 12 h), lange nachdem das Gerät weg ist: Aktiviere es nur für kabelgebundene Geräte, die sonst nichts sieht.",
+        "es": "Una concesión dura hasta que caduca (12 h por defecto), mucho después de que el dispositivo se fue: márquelo solo para dispositivos con cable que nada más ve."
+      },
+      "default": false
+    },
+    {
+      "key": "commands_section",
+      "type": "section",
+      "label": {
+        "en": "Guest Wi-Fi and commands",
+        "fr": "Wi-Fi invité et commandes",
+        "de": "Gäste-WLAN und Befehle",
+        "es": "Wi-Fi de invitados y órdenes"
+      },
+      "description": {
+        "en": "Read only by default. Commands turn the guest Wi-Fi on or off and reboot the router, from a scene or a widget. Nothing else is ever changed.",
+        "fr": "Lecture seule par défaut. Les commandes allument ou éteignent le Wi-Fi invité et redémarrent le routeur, depuis une scène ou un widget. Rien d'autre n'est jamais modifié.",
+        "de": "Standardmäßig nur lesen. Befehle schalten das Gäste-WLAN ein oder aus und starten den Router neu, aus einer Szene oder einem Widget. Sonst wird nie etwas geändert.",
+        "es": "Solo lectura por defecto. Las órdenes encienden o apagan el Wi-Fi de invitados y reinician el router, desde una escena o un widget. Nunca se cambia nada más."
+      }
+    },
+    {
+      "key": "guest_wifi",
+      "type": "string",
+      "label": {
+        "en": "Guest Wi-Fi network",
+        "fr": "Réseau Wi-Fi invité",
+        "de": "Gäste-WLAN-Netz",
+        "es": "Red Wi-Fi de invitados"
+      },
+      "description": {
+        "en": "The name of its wifi-iface section in /etc/config/wireless. \"List the Wi-Fi networks\" shows them. Empty: no guest Wi-Fi.",
+        "fr": "Le nom de sa section wifi-iface dans /etc/config/wireless. « Lister les réseaux Wi-Fi » les affiche. Vide : pas de Wi-Fi invité.",
+        "de": "Der Name seines wifi-iface-Abschnitts in /etc/config/wireless. „WLAN-Netze auflisten“ zeigt sie an. Leer: kein Gäste-WLAN.",
+        "es": "El nombre de su sección wifi-iface en /etc/config/wireless. «Listar las redes Wi-Fi» las muestra. Vacío: sin Wi-Fi de invitados."
+      },
+      "placeholder": {
+        "en": "e.g. guest",
+        "fr": "ex. guest",
+        "de": "z. B. guest",
+        "es": "p. ej. guest"
+      },
+      "default": ""
+    },
+    {
+      "key": "allow_commands",
+      "type": "boolean",
+      "label": {
+        "en": "Allow commands",
+        "fr": "Autoriser les commandes",
+        "de": "Befehle erlauben",
+        "es": "Permitir órdenes"
+      },
+      "description": {
+        "en": "Lets scenes and widgets turn the guest Wi-Fi on or off and reboot the router. The rpcd ACL needs the write part of the documentation.",
+        "fr": "Permet aux scènes et aux widgets d'allumer ou d'éteindre le Wi-Fi invité et de redémarrer le routeur. L'ACL rpcd doit contenir la partie écriture de la documentation.",
+        "de": "Erlaubt Szenen und Widgets, das Gäste-WLAN ein- oder auszuschalten und den Router neu zu starten. Die rpcd-ACL braucht den Schreibteil aus der Doku.",
+        "es": "Permite a escenas y widgets encender o apagar el Wi-Fi de invitados y reiniciar el router. La ACL rpcd necesita la parte de escritura de la documentación."
+      },
+      "default": false
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the names",
+        "fr": "Langue des noms",
+        "de": "Sprache der Namen",
+        "es": "Idioma de los nombres"
+      },
+      "description": {
+        "en": "Language of the device and feature names, set when a device is added to Gladys.",
+        "fr": "Langue des noms d'appareils et de fonctionnalités, fixés quand un appareil est ajouté à Gladys.",
+        "de": "Sprache der Geräte- und Funktionsnamen, festgelegt, wenn ein Gerät zu Gladys hinzugefügt wird.",
+        "es": "Idioma de los nombres de dispositivos y funciones, fijados cuando se añade un dispositivo a Gladys."
+      },
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": { "en": "English", "fr": "English", "de": "English", "es": "English" }
+        },
+        {
+          "value": "fr",
+          "label": { "en": "Français", "fr": "Français", "de": "Français", "es": "Français" }
+        },
+        {
+          "value": "de",
+          "label": { "en": "Deutsch", "fr": "Deutsch", "de": "Deutsch", "es": "Deutsch" }
+        },
+        {
+          "value": "es",
+          "label": { "en": "Español", "fr": "Español", "de": "Español", "es": "Español" }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "timeout_seconds": 60
     },
     {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
+      "key": "list_wifi_networks",
+      "label": {
+        "en": "List the Wi-Fi networks",
+        "fr": "Lister les réseaux Wi-Fi",
+        "de": "WLAN-Netze auflisten",
+        "es": "Listar las redes Wi-Fi"
+      },
+      "timeout_seconds": 30
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "unknown_device_connected",
+      "label": {
+        "en": "Unknown device connected",
+        "fr": "Appareil inconnu connecté",
+        "de": "Unbekanntes Gerät verbunden",
+        "es": "Dispositivo desconocido conectado"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "A MAC address never seen before joined the Wi-Fi or got a DHCP lease from the router.",
+        "fr": "Une adresse MAC jamais vue s'est connectée au Wi-Fi ou a obtenu un bail DHCP du routeur.",
+        "de": "Eine nie gesehene MAC-Adresse hat sich mit dem WLAN verbunden oder ein DHCP-Lease vom Router erhalten.",
+        "es": "Una dirección MAC nunca vista se ha unido al Wi-Fi o ha obtenido una concesión DHCP del router."
       },
       "fields": [
         {
-          "key": "device",
+          "key": "source",
           "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
+          "label": {
+            "en": "Seen through",
+            "fr": "Vu par",
+            "de": "Gesehen über",
+            "es": "Visto por"
+          },
+          "options": [
+            {
+              "value": "wifi",
+              "label": { "en": "Wi-Fi", "fr": "Wi-Fi", "de": "WLAN", "es": "Wi-Fi" }
+            },
+            {
+              "value": "dhcp",
+              "label": {
+                "en": "DHCP lease",
+                "fr": "Bail DHCP",
+                "de": "DHCP-Lease",
+                "es": "Concesión DHCP"
+              }
+            }
+          ]
         },
         {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
+          "key": "ssid",
+          "type": "string",
+          "label": {
+            "en": "Wi-Fi network (SSID)",
+            "fr": "Réseau Wi-Fi (SSID)",
+            "de": "WLAN-Netz (SSID)",
+            "es": "Red Wi-Fi (SSID)"
+          }
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "mac",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "MAC address",
+            "fr": "Adresse MAC",
+            "de": "MAC-Adresse",
+            "es": "Dirección MAC"
+          }
+        },
+        {
+          "key": "ip",
+          "type": "string",
+          "label": {
+            "en": "IP address",
+            "fr": "Adresse IP",
+            "de": "IP-Adresse",
+            "es": "Dirección IP"
+          }
+        },
+        {
+          "key": "host_name",
+          "type": "string",
+          "label": {
+            "en": "Host name",
+            "fr": "Nom d'hôte",
+            "de": "Hostname",
+            "es": "Nombre de host"
+          }
+        },
+        {
+          "key": "source",
+          "type": "string",
+          "label": {
+            "en": "Seen through",
+            "fr": "Vu par",
+            "de": "Gesehen über",
+            "es": "Visto por"
+          }
+        },
+        {
+          "key": "ssid",
+          "type": "string",
+          "label": {
+            "en": "Wi-Fi network (SSID)",
+            "fr": "Réseau Wi-Fi (SSID)",
+            "de": "WLAN-Netz (SSID)",
+            "es": "Red Wi-Fi (SSID)"
+          }
+        },
+        {
+          "key": "interface",
+          "type": "string",
+          "label": {
+            "en": "Wi-Fi interface",
+            "fr": "Interface Wi-Fi",
+            "de": "WLAN-Schnittstelle",
+            "es": "Interfaz Wi-Fi"
+          }
+        }
+      ]
+    },
+    {
+      "key": "wan_down",
+      "label": {
+        "en": "WAN link down",
+        "fr": "Lien WAN coupé",
+        "de": "WAN-Verbindung getrennt",
+        "es": "Enlace WAN cortado"
+      },
+      "description": {
+        "en": "A WAN interface of the router went down (cable, fibre, PPPoE session, 4G).",
+        "fr": "Une interface WAN du routeur est tombée (câble, fibre, session PPPoE, 4G).",
+        "de": "Eine WAN-Schnittstelle des Routers ist ausgefallen (Kabel, Glasfaser, PPPoE-Sitzung, 4G).",
+        "es": "Una interfaz WAN del router ha caído (cable, fibra, sesión PPPoE, 4G)."
+      },
+      "fields": [
+        {
+          "key": "interface",
+          "type": "string",
+          "label": {
+            "en": "WAN interface (e.g. wan)",
+            "fr": "Interface WAN (ex. wan)",
+            "de": "WAN-Schnittstelle (z. B. wan)",
+            "es": "Interfaz WAN (p. ej. wan)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "interface",
+          "type": "string",
+          "label": {
+            "en": "WAN interface",
+            "fr": "Interface WAN",
+            "de": "WAN-Schnittstelle",
+            "es": "Interfaz WAN"
+          }
+        }
+      ]
+    },
+    {
+      "key": "wan_up",
+      "label": {
+        "en": "WAN link restored",
+        "fr": "Lien WAN rétabli",
+        "de": "WAN-Verbindung wiederhergestellt",
+        "es": "Enlace WAN restablecido"
+      },
+      "description": {
+        "en": "A WAN interface that was down is up again, with the length of the outage.",
+        "fr": "Une interface WAN coupée est de nouveau active, avec la durée de la coupure.",
+        "de": "Eine ausgefallene WAN-Schnittstelle ist wieder aktiv, mit der Dauer des Ausfalls.",
+        "es": "Una interfaz WAN cortada vuelve a estar activa, con la duración del corte."
+      },
+      "fields": [
+        {
+          "key": "interface",
+          "type": "string",
+          "label": {
+            "en": "WAN interface (e.g. wan)",
+            "fr": "Interface WAN (ex. wan)",
+            "de": "WAN-Schnittstelle (z. B. wan)",
+            "es": "Interfaz WAN (p. ej. wan)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "interface",
+          "type": "string",
+          "label": {
+            "en": "WAN interface",
+            "fr": "Interface WAN",
+            "de": "WAN-Schnittstelle",
+            "es": "Interfaz WAN"
+          }
+        },
+        {
+          "key": "down_minutes",
+          "type": "number",
+          "label": {
+            "en": "Outage length (minutes)",
+            "fr": "Durée de la coupure (minutes)",
+            "de": "Dauer des Ausfalls (Minuten)",
+            "es": "Duración del corte (minutos)"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "enable_guest_wifi",
+      "label": {
+        "en": "Turn on the guest Wi-Fi",
+        "fr": "Allumer le Wi-Fi invité",
+        "de": "Gäste-WLAN einschalten",
+        "es": "Encender el Wi-Fi de invitados"
       },
-      "timeout_seconds": 15,
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ],
+      "description": {
+        "en": "Enables the guest Wi-Fi network chosen in the configuration. Needs \"Allow commands\".",
+        "fr": "Active le réseau Wi-Fi invité choisi dans la configuration. Nécessite « Autoriser les commandes ».",
+        "de": "Aktiviert das in der Konfiguration gewählte Gäste-WLAN. Braucht „Befehle erlauben“.",
+        "es": "Activa la red Wi-Fi de invitados elegida en la configuración. Requiere «Permitir órdenes»."
+      },
+      "timeout_seconds": 30,
       "outputs": [
         {
-          "key": "signalled",
+          "key": "enabled",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "Guest Wi-Fi enabled",
+            "fr": "Wi-Fi invité activé",
+            "de": "Gäste-WLAN aktiviert",
+            "es": "Wi-Fi de invitados activado"
+          }
         }
       ]
+    },
+    {
+      "key": "disable_guest_wifi",
+      "label": {
+        "en": "Turn off the guest Wi-Fi",
+        "fr": "Éteindre le Wi-Fi invité",
+        "de": "Gäste-WLAN ausschalten",
+        "es": "Apagar el Wi-Fi de invitados"
+      },
+      "description": {
+        "en": "Disables the guest Wi-Fi network chosen in the configuration. Needs \"Allow commands\".",
+        "fr": "Désactive le réseau Wi-Fi invité choisi dans la configuration. Nécessite « Autoriser les commandes ».",
+        "de": "Deaktiviert das in der Konfiguration gewählte Gäste-WLAN. Braucht „Befehle erlauben“.",
+        "es": "Desactiva la red Wi-Fi de invitados elegida en la configuración. Requiere «Permitir órdenes»."
+      },
+      "timeout_seconds": 30,
+      "outputs": [
+        {
+          "key": "enabled",
+          "type": "boolean",
+          "label": {
+            "en": "Guest Wi-Fi enabled",
+            "fr": "Wi-Fi invité activé",
+            "de": "Gäste-WLAN aktiviert",
+            "es": "Wi-Fi de invitados activado"
+          }
+        }
+      ]
+    },
+    {
+      "key": "reboot_router",
+      "label": {
+        "en": "Reboot the OpenWrt router",
+        "fr": "Redémarrer le routeur OpenWrt",
+        "de": "OpenWrt-Router neu starten",
+        "es": "Reiniciar el router OpenWrt"
+      },
+      "description": {
+        "en": "Restarts the router: the network is cut for one to three minutes. Needs \"Allow commands\".",
+        "fr": "Redémarre le routeur : le réseau est coupé une à trois minutes. Nécessite « Autoriser les commandes ».",
+        "de": "Startet den Router neu: Das Netzwerk ist ein bis drei Minuten weg. Braucht „Befehle erlauben“.",
+        "es": "Reinicia el router: la red se corta de uno a tres minutos. Requiere «Permitir órdenes»."
+      },
+      "timeout_seconds": 30
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
+      "key": "router",
+      "label": {
+        "en": "OpenWrt router",
+        "fr": "Routeur OpenWrt",
+        "de": "OpenWrt-Router",
+        "es": "Router OpenWrt"
+      },
       "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+        "en": "Load, memory, WAN rates and links, Wi-Fi clients, guest Wi-Fi, uptime and version.",
+        "fr": "Charge, mémoire, débits et liens WAN, clients Wi-Fi, Wi-Fi invité, durée et version.",
+        "de": "Last, Speicher, WAN-Raten und -Verbindungen, WLAN-Clients, Gäste-WLAN, Laufzeit, Version.",
+        "es": "Carga, memoria, caudal y enlaces WAN, clientes Wi-Fi, Wi-Fi invitados, tiempo y versión."
       },
       "icon": "activity",
-      "action_timeout_seconds": 15
+      "action_timeout_seconds": 30
+    },
+    {
+      "key": "presence",
+      "label": {
+        "en": "Devices at home",
+        "fr": "Appareils présents",
+        "de": "Geräte zu Hause",
+        "es": "Dispositivos en casa"
+      },
+      "description": {
+        "en": "The devices followed as presence sensors, present first.",
+        "fr": "Les appareils suivis comme capteurs de présence, présents d'abord.",
+        "de": "Die als Anwesenheitssensoren verfolgten Geräte, anwesende zuerst.",
+        "es": "Los dispositivos seguidos como sensores de presencia, presentes primero."
+      },
+      "icon": "users",
+      "settings": [
+        {
+          "key": "show",
+          "type": "select",
+          "label": {
+            "en": "Show",
+            "fr": "Afficher",
+            "de": "Anzeigen",
+            "es": "Mostrar"
+          },
+          "default": "all",
+          "options": [
+            {
+              "value": "all",
+              "label": {
+                "en": "All followed devices",
+                "fr": "Tous les appareils suivis",
+                "de": "Alle verfolgten Geräte",
+                "es": "Todos los dispositivos seguidos"
+              }
+            },
+            {
+              "value": "present",
+              "label": {
+                "en": "Present devices only",
+                "fr": "Appareils présents seulement",
+                "de": "Nur anwesende Geräte",
+                "es": "Solo dispositivos presentes"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

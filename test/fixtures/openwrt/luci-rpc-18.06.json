@@ -1,0 +1,58 @@
+{
+  "_comment": "An OpenWrt 18.06 device without uhttpd-mod-ubus but with luci-mod-rpc, as its LuCI RPC API answers (the fallback). The neighbour format is the one the tests of openwrt-luci-rpc (Apache-2.0) normalize (`dest`, `mac`, `dev`, `reachable`, `stale`); anonymized: MAC addresses in 00:00:5E:00:53:xx (RFC 7042), addresses in 192.0.2.0/24 and 203.0.113.0/24 (RFC 5737), invented names.",
+  "luci": {
+    "sys hostname": "attic-ap",
+    "sys uptime": 86500,
+    "ip link": {
+      "eth0": { "up": true, "type": 1, "qlen": 1000, "mtu": 1500, "mac": "00:00:5e:00:53:d1" }
+    },
+    "ip neighbors": [
+      {
+        "dest": "192.0.2.161",
+        "mac": "00:00:5e:00:53:e1",
+        "dev": "br-lan",
+        "reachable": true,
+        "stale": false,
+        "router": false,
+        "proxy": false
+      },
+      {
+        "dest": "192.0.2.162",
+        "mac": "00:00:5e:00:53:e2",
+        "dev": "br-lan",
+        "reachable": false,
+        "stale": true,
+        "router": false,
+        "proxy": false
+      },
+      {
+        "dest": "203.0.113.1",
+        "mac": "00:00:5e:00:53:f1",
+        "dev": "eth0.2",
+        "reachable": true,
+        "stale": false,
+        "router": true,
+        "proxy": false
+      }
+    ],
+    "uci get_all": {
+      "dhcp": {
+        "lan": {
+          ".type": "dhcp",
+          ".name": "lan",
+          "interface": "lan",
+          "start": "100",
+          "limit": "150",
+          "leasetime": "12h"
+        },
+        "cfg07fd43": {
+          ".type": "host",
+          ".name": "cfg07fd43",
+          "name": "laptop-sam",
+          "mac": "00:00:5E:00:53:E1",
+          "ip": "192.0.2.161"
+        }
+      }
+    }
+  }
+}

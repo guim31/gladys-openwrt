@@ -1,0 +1,497 @@
+{
+  "_comment": "A dual-band OpenWrt 23.05 router (DSA switch, DHCP WAN, a guest network on radio0), as ubus answers it. Reconstructed from the sources of procd, netifd, hostapd (ubus.c), rpcd and rpcd-mod-luci, anonymized: MAC addresses in 00:00:5E:00:53:xx (RFC 7042), addresses in 192.0.2.0/24 and 203.0.113.0/24 (RFC 5737), invented names and keys.",
+  "ubus": {
+    "system board": {
+      "kernel": "5.15.167",
+      "hostname": "OpenWrt",
+      "system": "ARMv8 Processor rev 4",
+      "model": "Linksys E8450 (UBI)",
+      "board_name": "linksys,e8450-ubi",
+      "rootfs_type": "squashfs",
+      "release": {
+        "distribution": "OpenWrt",
+        "version": "23.05.5",
+        "revision": "r24106-10cc5fcd00",
+        "target": "mediatek/mt7622",
+        "description": "OpenWrt 23.05.5 r24106-10cc5fcd00",
+        "builddate": "1727004660"
+      }
+    },
+    "system info": {
+      "localtime": 1760522400,
+      "uptime": 412345,
+      "load": [27525, 18350, 13107],
+      "memory": {
+        "total": 527405056,
+        "free": 312770560,
+        "shared": 1208320,
+        "buffered": 0,
+        "available": 290381824,
+        "cached": 48263168
+      },
+      "root": { "total": 77440, "free": 71872, "used": 5568, "avail": 67712 },
+      "tmp": { "total": 257524, "free": 256224, "used": 1300, "avail": 256224 },
+      "swap": { "total": 0, "free": 0 }
+    },
+    "network.interface dump": {
+      "interface": [
+        {
+          "interface": "lan",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 412300,
+          "l3_device": "br-lan",
+          "proto": "static",
+          "device": "br-lan",
+          "updated": ["addresses"],
+          "metric": 0,
+          "dns_metric": 0,
+          "delegation": true,
+          "ipv4-address": [{ "address": "192.0.2.1", "mask": 24 }],
+          "ipv6-address": [],
+          "ipv6-prefix": [],
+          "ipv6-prefix-assignment": [],
+          "route": [],
+          "dns-server": [],
+          "dns-search": [],
+          "neighbors": [],
+          "inactive": {},
+          "data": {}
+        },
+        {
+          "interface": "guest",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 412290,
+          "l3_device": "br-guest",
+          "proto": "static",
+          "device": "br-guest",
+          "ipv4-address": [{ "address": "192.0.2.129", "mask": 25 }],
+          "route": [],
+          "data": {}
+        },
+        {
+          "interface": "loopback",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 412310,
+          "l3_device": "lo",
+          "proto": "static",
+          "device": "lo",
+          "ipv4-address": [{ "address": "127.0.0.1", "mask": 8 }],
+          "route": [],
+          "data": {}
+        },
+        {
+          "interface": "wan",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 412280,
+          "l3_device": "wan",
+          "proto": "dhcp",
+          "device": "wan",
+          "updated": ["addresses", "routes", "data"],
+          "metric": 0,
+          "dns_metric": 0,
+          "delegation": true,
+          "ipv4-address": [{ "address": "203.0.113.45", "mask": 24 }],
+          "ipv6-address": [],
+          "route": [
+            {
+              "target": "0.0.0.0",
+              "mask": 0,
+              "nexthop": "203.0.113.1",
+              "source": "203.0.113.45/32"
+            }
+          ],
+          "dns-server": ["203.0.113.1"],
+          "dns-search": [],
+          "neighbors": [],
+          "inactive": {},
+          "data": { "leasetime": 86400 }
+        },
+        {
+          "interface": "wan6",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 412270,
+          "l3_device": "wan",
+          "proto": "dhcpv6",
+          "device": "wan",
+          "ipv6-address": [{ "address": "2001:db8:0:1::45", "mask": 128 }],
+          "route": [
+            {
+              "target": "::",
+              "mask": 0,
+              "nexthop": "fe80::1",
+              "source": "2001:db8:0:1::45/128"
+            }
+          ],
+          "data": {}
+        }
+      ]
+    },
+    "network.device status": {
+      "eth0": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "ethernet",
+        "mtu": 1500,
+        "macaddr": "00:00:5e:00:53:01",
+        "statistics": { "rx_bytes": 98123456789, "tx_bytes": 12345678901 }
+      },
+      "lan1": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "dsa",
+        "macaddr": "00:00:5e:00:53:01",
+        "statistics": { "rx_bytes": 4567890123, "tx_bytes": 23456789012 }
+      },
+      "lan2": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": false,
+        "devtype": "dsa",
+        "macaddr": "00:00:5e:00:53:01",
+        "statistics": { "rx_bytes": 0, "tx_bytes": 0 }
+      },
+      "wan": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "dsa",
+        "macaddr": "00:00:5e:00:53:02",
+        "statistics": { "rx_bytes": 87654321098, "tx_bytes": 9876543210 }
+      },
+      "br-lan": {
+        "external": false,
+        "present": true,
+        "type": "bridge",
+        "up": true,
+        "carrier": true,
+        "devtype": "bridge",
+        "bridge-members": ["lan1", "lan2", "phy0-ap0", "phy1-ap0"],
+        "macaddr": "00:00:5e:00:53:01",
+        "statistics": { "rx_bytes": 3456789012, "tx_bytes": 45678901234 }
+      },
+      "br-guest": {
+        "external": false,
+        "present": true,
+        "type": "bridge",
+        "up": true,
+        "carrier": true,
+        "devtype": "bridge",
+        "bridge-members": ["phy0-ap1"],
+        "macaddr": "00:00:5e:00:53:05",
+        "statistics": { "rx_bytes": 123456789, "tx_bytes": 234567890 }
+      },
+      "phy0-ap0": {
+        "external": true,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "wlan",
+        "macaddr": "00:00:5e:00:53:03",
+        "statistics": { "rx_bytes": 567890123, "tx_bytes": 6789012345 }
+      },
+      "phy0-ap1": {
+        "external": true,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "wlan",
+        "macaddr": "00:00:5e:00:53:06",
+        "statistics": { "rx_bytes": 12345678, "tx_bytes": 23456789 }
+      },
+      "phy1-ap0": {
+        "external": true,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "wlan",
+        "macaddr": "00:00:5e:00:53:04",
+        "statistics": { "rx_bytes": 7890123456, "tx_bytes": 89012345678 }
+      },
+      "lo": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "devtype": "ethernet",
+        "statistics": { "rx_bytes": 1234567, "tx_bytes": 1234567 }
+      }
+    },
+    "network.wireless status": {
+      "radio0": {
+        "up": true,
+        "pending": false,
+        "autostart": true,
+        "disabled": false,
+        "retry_setup_failed": false,
+        "config": {
+          "path": "platform/18000000.wmac",
+          "band": "2g",
+          "channel": "1",
+          "htmode": "HE20",
+          "country": "FR",
+          "cell_density": 0
+        },
+        "interfaces": [
+          {
+            "section": "default_radio0",
+            "ifname": "phy0-ap0",
+            "config": {
+              "mode": "ap",
+              "ssid": "Home-Network",
+              "encryption": "sae-mixed",
+              "key": "not-a-real-wifi-key-0",
+              "network": ["lan"]
+            },
+            "vlans": [],
+            "stations": []
+          },
+          {
+            "section": "guest",
+            "ifname": "phy0-ap1",
+            "config": {
+              "mode": "ap",
+              "ssid": "Home-Guests",
+              "encryption": "psk2",
+              "key": "not-a-real-wifi-key-guest",
+              "isolate": true,
+              "network": ["guest"]
+            },
+            "vlans": [],
+            "stations": []
+          }
+        ]
+      },
+      "radio1": {
+        "up": true,
+        "pending": false,
+        "autostart": true,
+        "disabled": false,
+        "retry_setup_failed": false,
+        "config": {
+          "path": "1a143000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0",
+          "band": "5g",
+          "channel": "36",
+          "htmode": "HE80",
+          "country": "FR",
+          "cell_density": 0
+        },
+        "interfaces": [
+          {
+            "section": "default_radio1",
+            "ifname": "phy1-ap0",
+            "config": {
+              "mode": "ap",
+              "ssid": "Home-Network",
+              "encryption": "sae-mixed",
+              "key": "not-a-real-wifi-key-1",
+              "network": ["lan"]
+            },
+            "vlans": [],
+            "stations": []
+          }
+        ]
+      }
+    },
+    "hostapd.phy0-ap0 get_clients": {
+      "freq": 2412,
+      "clients": {
+        "00:00:5e:00:53:21": {
+          "auth": true,
+          "assoc": true,
+          "authorized": true,
+          "preauth": false,
+          "wds": false,
+          "wmm": true,
+          "ht": true,
+          "vht": false,
+          "he": false,
+          "wps": false,
+          "mfp": false,
+          "rrm": [0, 0, 0, 0, 0],
+          "extended_capabilities": [],
+          "aid": 1,
+          "signature": "wifi4|probe:0,1,50,45,221(0050f2,8),htcap:0020|assoc:0,1,50,45,221(0050f2,2)",
+          "bytes": { "rx": 1234567, "tx": 7654321 },
+          "airtime": { "rx": 1200, "tx": 3400 },
+          "packets": { "rx": 12345, "tx": 23456 },
+          "rate": { "rx": 72200, "tx": 65000 },
+          "signal": -61
+        },
+        "00:00:5e:00:53:29": {
+          "auth": true,
+          "assoc": true,
+          "authorized": false,
+          "preauth": false,
+          "wds": false,
+          "wmm": true,
+          "ht": true,
+          "vht": false,
+          "he": false,
+          "wps": false,
+          "mfp": false,
+          "aid": 2,
+          "signal": -80
+        }
+      }
+    },
+    "hostapd.phy0-ap1 get_clients": {
+      "freq": 2412,
+      "clients": {
+        "00:00:5e:00:53:41": {
+          "auth": true,
+          "assoc": true,
+          "authorized": true,
+          "wmm": true,
+          "ht": true,
+          "aid": 1,
+          "signal": -55
+        }
+      }
+    },
+    "hostapd.phy1-ap0 get_clients": {
+      "freq": 5180,
+      "clients": {
+        "00:00:5e:00:53:22": {
+          "auth": true,
+          "assoc": true,
+          "authorized": true,
+          "preauth": false,
+          "wds": false,
+          "wmm": true,
+          "ht": true,
+          "vht": true,
+          "he": true,
+          "wps": false,
+          "mfp": true,
+          "aid": 1,
+          "bytes": { "rx": 98765432, "tx": 876543210 },
+          "rate": { "rx": 864800, "tx": 1200900 },
+          "signal": -48
+        },
+        "00:00:5e:00:53:23": {
+          "auth": true,
+          "assoc": true,
+          "authorized": true,
+          "wmm": true,
+          "ht": true,
+          "vht": true,
+          "he": false,
+          "mfp": true,
+          "aid": 2,
+          "signal": -67
+        }
+      }
+    },
+    "luci-rpc getDHCPLeases": {
+      "dhcp_leases": [
+        {
+          "expires": 41234,
+          "hostname": "Pixel-of-Alex",
+          "macaddr": "00:00:5E:00:53:21",
+          "ipaddr": "192.0.2.121"
+        },
+        {
+          "expires": 39876,
+          "hostname": "iPhone",
+          "macaddr": "00:00:5E:00:53:22",
+          "ipaddr": "192.0.2.122"
+        },
+        {
+          "expires": 40000,
+          "macaddr": "00:00:5E:00:53:23",
+          "ipaddr": "192.0.2.123"
+        },
+        {
+          "expires": 0,
+          "hostname": "nas",
+          "macaddr": "00:00:5E:00:53:31",
+          "ipaddr": "192.0.2.31"
+        },
+        {
+          "expires": 23456,
+          "hostname": "guest-laptop",
+          "macaddr": "00:00:5E:00:53:41",
+          "ipaddr": "192.0.2.141"
+        }
+      ],
+      "dhcp6_leases": [
+        {
+          "expires": 41234,
+          "hostname": "nas",
+          "duid": "000100012a3b4c5d00005e005331",
+          "iaid": "0c1d2e3f",
+          "ip6addr": "2001:db8:0:2::31",
+          "ip6addrs": ["2001:db8:0:2::31/128"]
+        }
+      ]
+    }
+  },
+  "uci": {
+    "wireless": {
+      "radio0": { ".type": "wifi-device", "type": "mac80211", "band": "2g", "channel": "1" },
+      "radio1": { ".type": "wifi-device", "type": "mac80211", "band": "5g", "channel": "36" },
+      "default_radio0": {
+        ".type": "wifi-iface",
+        "device": "radio0",
+        "network": "lan",
+        "mode": "ap",
+        "ssid": "Home-Network",
+        "encryption": "sae-mixed",
+        "key": "not-a-real-wifi-key-0"
+      },
+      "default_radio1": {
+        ".type": "wifi-iface",
+        "device": "radio1",
+        "network": "lan",
+        "mode": "ap",
+        "ssid": "Home-Network",
+        "encryption": "sae-mixed",
+        "key": "not-a-real-wifi-key-1"
+      },
+      "guest": {
+        ".type": "wifi-iface",
+        "device": "radio0",
+        "network": "guest",
+        "mode": "ap",
+        "ssid": "Home-Guests",
+        "encryption": "psk2",
+        "key": "not-a-real-wifi-key-guest",
+        "isolate": "1"
+      }
+    }
+  }
+}

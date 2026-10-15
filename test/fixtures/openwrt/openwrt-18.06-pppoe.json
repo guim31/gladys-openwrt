@@ -1,0 +1,322 @@
+{
+  "_comment": "An older OpenWrt 18.06 router (swconfig VLANs, PPPoE WAN, wlan0/wlan1 named with hwmode, hostapd built without ubus so the stations come from iwinfo, no rpcd-mod-luci so the leases come from the dnsmasq lease file, memory without `available`), as ubus answers it. Reconstructed from the sources of procd, netifd, rpcd (iwinfo.c, file.c) and dnsmasq, anonymized: MAC addresses in 00:00:5E:00:53:xx (RFC 7042), addresses in 192.0.2.0/24 and 203.0.113.0/24 (RFC 5737), invented names and keys.",
+  "ubus": {
+    "system board": {
+      "kernel": "4.14.241",
+      "hostname": "gateway",
+      "system": "Atheros AR9344 rev 3",
+      "model": "TP-Link TL-WDR3600 v1",
+      "board_name": "tl-wdr3600",
+      "rootfs_type": "squashfs",
+      "release": {
+        "distribution": "OpenWrt",
+        "version": "18.06.9",
+        "revision": "r8077-7cbbab7246",
+        "target": "ar71xx/generic",
+        "description": "OpenWrt 18.06.9 r8077-7cbbab7246"
+      }
+    },
+    "system info": {
+      "localtime": 1760522400,
+      "uptime": 3725,
+      "load": [65536, 49152, 32768],
+      "memory": {
+        "total": 128061440,
+        "free": 76435456,
+        "shared": 892928,
+        "buffered": 4304896
+      },
+      "swap": { "total": 0, "free": 0 }
+    },
+    "network.interface dump": {
+      "interface": [
+        {
+          "interface": "lan",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 3700,
+          "l3_device": "br-lan",
+          "proto": "static",
+          "device": "br-lan",
+          "ipv4-address": [{ "address": "192.0.2.1", "mask": 24 }],
+          "route": [],
+          "data": {}
+        },
+        {
+          "interface": "loopback",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 3710,
+          "l3_device": "lo",
+          "proto": "static",
+          "device": "lo",
+          "route": [],
+          "data": {}
+        },
+        {
+          "interface": "wan",
+          "up": true,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "uptime": 3650,
+          "l3_device": "pppoe-wan",
+          "proto": "pppoe",
+          "device": "eth0.2",
+          "ipv4-address": [{ "address": "203.0.113.77", "mask": 32, "ptpaddress": "203.0.113.1" }],
+          "route": [
+            { "target": "0.0.0.0", "mask": 0, "nexthop": "203.0.113.1", "source": "0.0.0.0/0" }
+          ],
+          "dns-server": ["203.0.113.2"],
+          "data": {}
+        },
+        {
+          "interface": "wan6",
+          "up": false,
+          "pending": false,
+          "available": true,
+          "autostart": true,
+          "dynamic": false,
+          "proto": "dhcpv6",
+          "device": "@wan",
+          "route": [],
+          "data": {}
+        }
+      ]
+    },
+    "network.device status": {
+      "eth0": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "macaddr": "00:00:5e:00:53:a1",
+        "statistics": { "rx_bytes": 2345678901, "tx_bytes": 345678901 }
+      },
+      "eth0.1": {
+        "external": false,
+        "present": true,
+        "type": "VLAN",
+        "up": true,
+        "carrier": true,
+        "macaddr": "00:00:5e:00:53:a1",
+        "statistics": { "rx_bytes": 345678901, "tx_bytes": 1234567890 }
+      },
+      "eth0.2": {
+        "external": false,
+        "present": true,
+        "type": "VLAN",
+        "up": true,
+        "carrier": true,
+        "macaddr": "00:00:5e:00:53:a2",
+        "statistics": { "rx_bytes": 1987654321, "tx_bytes": 123456789 }
+      },
+      "pppoe-wan": {
+        "external": false,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "statistics": { "rx_bytes": 1876543210, "tx_bytes": 112345678 }
+      },
+      "br-lan": {
+        "external": false,
+        "present": true,
+        "type": "Bridge",
+        "up": true,
+        "carrier": true,
+        "bridge-members": ["eth0.1", "wlan0", "wlan1"],
+        "macaddr": "00:00:5e:00:53:a1",
+        "statistics": { "rx_bytes": 234567890, "tx_bytes": 1234567890 }
+      },
+      "wlan0": {
+        "external": true,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "macaddr": "00:00:5e:00:53:a3",
+        "statistics": { "rx_bytes": 34567890, "tx_bytes": 456789012 }
+      },
+      "wlan1": {
+        "external": true,
+        "present": true,
+        "type": "Network device",
+        "up": true,
+        "carrier": true,
+        "macaddr": "00:00:5e:00:53:a4",
+        "statistics": { "rx_bytes": 4567890, "tx_bytes": 56789012 }
+      }
+    },
+    "network.wireless status": {
+      "radio0": {
+        "up": true,
+        "pending": false,
+        "autostart": true,
+        "disabled": false,
+        "retry_setup_failed": false,
+        "config": {
+          "channel": "11",
+          "hwmode": "11g",
+          "path": "platform/ahb/18100000.wmac",
+          "htmode": "HT20",
+          "country": "DE"
+        },
+        "interfaces": [
+          {
+            "section": "default_radio0",
+            "ifname": "wlan0",
+            "config": {
+              "mode": "ap",
+              "ssid": "Family-WLAN",
+              "encryption": "psk2",
+              "key": "not-a-real-wifi-key-a",
+              "network": ["lan"]
+            }
+          }
+        ]
+      },
+      "radio1": {
+        "up": true,
+        "pending": false,
+        "autostart": true,
+        "disabled": false,
+        "retry_setup_failed": false,
+        "config": {
+          "channel": "36",
+          "hwmode": "11a",
+          "path": "pci0000:00/0000:00:00.0",
+          "htmode": "HT40",
+          "country": "DE"
+        },
+        "interfaces": [
+          {
+            "section": "default_radio1",
+            "ifname": "wlan1",
+            "config": {
+              "mode": "ap",
+              "ssid": "Family-WLAN-5G",
+              "encryption": "psk2",
+              "key": "not-a-real-wifi-key-b",
+              "network": ["lan"]
+            }
+          }
+        ]
+      }
+    },
+    "iwinfo assoclist": {
+      "wlan0": {
+        "results": [
+          {
+            "mac": "00:00:5E:00:53:B1",
+            "signal": -58,
+            "signal_avg": -57,
+            "noise": -95,
+            "inactive": 120,
+            "connected_time": 3020,
+            "thr": 32000,
+            "authorized": true,
+            "authenticated": true,
+            "preamble": "long",
+            "wme": true,
+            "mfp": false,
+            "tdls": false,
+            "mesh llid": 0,
+            "mesh plid": 0,
+            "mesh plink": "",
+            "mesh local PS": "",
+            "mesh peer PS": "",
+            "mesh non-peer PS": "",
+            "rx": {
+              "drop_misc": 12,
+              "packets": 10234,
+              "bytes": 1234567,
+              "ht": true,
+              "vht": false,
+              "mhz": 20,
+              "rate": 65000,
+              "mcs": 7,
+              "40mhz": false,
+              "short_gi": false
+            },
+            "tx": {
+              "failed": 3,
+              "retries": 120,
+              "packets": 9876,
+              "bytes": 7654321,
+              "ht": true,
+              "vht": false,
+              "mhz": 20,
+              "rate": 72200,
+              "mcs": 7,
+              "40mhz": false,
+              "short_gi": true
+            }
+          }
+        ]
+      },
+      "wlan1": {
+        "results": [
+          {
+            "mac": "00:00:5E:00:53:B2",
+            "signal": -66,
+            "signal_avg": -65,
+            "noise": -102,
+            "inactive": 40,
+            "connected_time": 1200,
+            "thr": 84000,
+            "preamble": "long",
+            "wme": true,
+            "mfp": false,
+            "tdls": false
+          }
+        ]
+      }
+    },
+    "file read": {
+      "/tmp/dhcp.leases": "1760560000 00:00:5e:00:53:b1 192.0.2.151 Tablet-Kitchen 01:00:00:5e:00:53:b1\n1760561234 00:00:5e:00:53:b2 192.0.2.152 * 01:00:00:5e:00:53:b2\n0 00:00:5e:00:53:c1 192.0.2.20 printer *\n"
+    }
+  },
+  "uci": {
+    "wireless": {
+      "radio0": { ".type": "wifi-device", "type": "mac80211", "hwmode": "11g", "channel": "11" },
+      "radio1": { ".type": "wifi-device", "type": "mac80211", "hwmode": "11a", "channel": "36" },
+      "default_radio0": {
+        ".type": "wifi-iface",
+        "device": "radio0",
+        "network": "lan",
+        "mode": "ap",
+        "ssid": "Family-WLAN",
+        "encryption": "psk2",
+        "key": "not-a-real-wifi-key-a"
+      },
+      "default_radio1": {
+        ".type": "wifi-iface",
+        "device": "radio1",
+        "network": "lan",
+        "mode": "ap",
+        "ssid": "Family-WLAN-5G",
+        "encryption": "psk2",
+        "key": "not-a-real-wifi-key-b"
+      },
+      "guest": {
+        ".type": "wifi-iface",
+        "device": "radio0",
+        "network": "guest",
+        "mode": "ap",
+        "ssid": "Family-Guests",
+        "encryption": "psk2",
+        "key": "not-a-real-wifi-key-c",
+        "disabled": "1"
+      }
+    }
+  }
+}
