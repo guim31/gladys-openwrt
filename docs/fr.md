@@ -1,67 +1,245 @@
-# Template de démonstration
+# OpenWrt
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Suivez votre routeur ou point d'accès [OpenWrt](https://openwrt.org) depuis
+Gladys, sur votre réseau local : qui est à la maison (les téléphones connectés
+au Wi-Fi), la santé du routeur, l'état et les débits de la connexion internet,
+le Wi-Fi invité. Pas de cloud, pas de compte.
 
-## Ce que vous obtenez
+L'intégration parle au routeur comme LuCI, l'interface web d'OpenWrt : par
+**ubus sur HTTP** (`/ubus`, sessions rpcd). Un routeur sans `/ubus` mais avec
+l'API LuCI RPC (luci-mod-rpc) donne quand même la présence et le temps de
+fonctionnement.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+> **Développée sans le matériel : vos retours sont les bienvenus.**
+> L'intégration est construite et testée sur les réponses d'OpenWrt lues dans
+> son code source (procd, netifd, hostapd, rpcd), pas sur un vrai routeur.
+> Dites-nous ce qui marche et ce qui ne marche pas dans les
+> [issues](https://github.com/guim31/gladys-openwrt/issues).
 
-## Configuration
+Ce projet n'est pas affilié au projet OpenWrt. OpenWrt est une marque de son
+propriétaire.
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+## Ce qu'il faut
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+- Gladys Assistant **5.1.0** ou plus récent.
+- Un routeur ou point d'accès sous **OpenWrt 18.06 ou plus récent**, avec
+  `rpcd` et `uhttpd-mod-ubus`. Les deux viennent avec LuCI : toutes les images
+  standard les ont. Vérifiez sur le routeur : `ls /usr/lib/uhttpd_ubus.so` doit
+  afficher le fichier. Sinon : `opkg install rpcd uhttpd-mod-ubus` (`apk add`
+  sous OpenWrt 25), puis `/etc/init.d/uhttpd restart`.
+- Un utilisateur rpcd pour Gladys (ci-dessous). `root` fonctionne aussi, mais
+  un utilisateur dédié qui ne peut que lire est plus sûr.
 
-## Actions
+## Mise en place
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+### L'utilisateur rpcd et son ACL
 
-## Scènes
+1. Connectez-vous au routeur en SSH et créez le fichier
+   `/usr/share/rpcd/acl.d/gladys.json`. La partie `read` est ce que
+   l'intégration lit ; la partie `write` ne sert qu'aux commandes (Wi-Fi
+   invité, redémarrage) :
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+   ```json
+   {
+     "gladys": {
+       "description": "Gladys Assistant",
+       "read": {
+         "ubus": {
+           "system": ["board", "info"],
+           "network.interface": ["dump"],
+           "network.device": ["status"],
+           "network.wireless": ["status"],
+           "hostapd.*": ["get_clients"],
+           "iwinfo": ["assoclist"],
+           "luci-rpc": ["getDHCPLeases"],
+           "file": ["read"],
+           "uci": ["get"]
+         },
+         "file": { "/tmp/dhcp.leases": ["read"] },
+         "uci": ["wireless"]
+       },
+       "write": {
+         "ubus": { "system": ["reboot"], "uci": ["set", "commit"] },
+         "uci": ["wireless"]
+       }
+     }
+   }
+   ```
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+2. Créez le login, avec son propre mot de passe (`uhttpd -m` le transforme en
+   empreinte : il n'est pas stocké en clair) :
+
+   ```sh
+   uci add rpcd login
+   uci set rpcd.@login[-1].username='gladys'
+   uci set rpcd.@login[-1].password="$(uhttpd -m 'choisissez-un-long-mot-de-passe')"
+   uci add_list rpcd.@login[-1].read='gladys'
+   uci commit rpcd
+   /etc/init.d/rpcd restart
+   ```
+
+3. Seulement si vous voulez les commandes : donnez aussi la partie écriture au
+   login, avec `list write 'gladys'` dans sa section de `/etc/config/rpcd`,
+   puis `/etc/init.d/rpcd restart`.
+
+Bon à savoir : `network.wireless status` et `uci get wireless` peuvent montrer
+les clés Wi-Fi à cet utilisateur. L'intégration ne lit que les noms, les SSID
+et l'option `disabled` du Wi-Fi invité, ne stocke aucune clé et n'en écrit
+jamais dans ses logs. Les lignes `uci` et `file` sont facultatives : sans
+elles, le Wi-Fi invité et les baux d'un vieux routeur sans `luci-rpc` ne sont
+pas lus.
+
+### La configuration
+
+Dans Gladys, ouvrez l'intégration, puis **Configuration** :
+
+- **Adresse du routeur** : l'adresse IP du routeur (`192.168.1.1` par défaut),
+  avec `:port` si son serveur web utilise un autre port.
+- **Utiliser HTTPS** : chiffre le mot de passe sur votre réseau, quand
+  `luci-ssl` est installé. Un routeur qui renvoie HTTP vers HTTPS est suivi de
+  toute façon.
+- **Accepter un certificat auto-signé** : OpenWrt crée son propre certificat
+  au premier démarrage ; cochez pour votre propre routeur.
+- **Nom d'utilisateur** et **Mot de passe** : le login rpcd créé plus haut.
+- **Interface** : laissez _Automatique_ (ubus, et LuCI RPC seulement si le
+  routeur n'a pas `/ubus`).
+- **Intervalle de rafraîchissement** : de 10 s à 1 min (30 s par défaut).
+- **Interfaces WAN** : vide, l'intégration prend `wan` et les interfaces qui
+  portent la route par défaut. Sinon, les noms de _Réseau → Interfaces_
+  (`wan, wwan`), quatre au plus.
+- **Délai de départ (minutes)** et **Compter un bail DHCP comme présent** :
+  voir les capteurs de présence plus bas.
+- **Réseau Wi-Fi invité** : le nom de la section `wifi-iface` du réseau invité
+  (`guest`, `wifinet2`…). **Lister les réseaux Wi-Fi** les affiche.
+- **Autoriser les commandes** : désactivé par défaut (voir les actions).
+- **Langue des noms** : langue des noms d'appareils et de fonctionnalités.
+
+Enregistrez, puis cliquez sur **Tester la connexion** : le rapport dit quelle
+interface a répondu, les interfaces WAN et les radios trouvées, les clients
+vus, et ce que l'ACL ne permet pas.
+
+## Les appareils
+
+Ouvrez l'onglet **Découverte** : le routeur et les clients du réseau qu'il voit
+y sont listés. Ajoutez ceux que vous voulez.
+
+### Le routeur
+
+- **Charge système (1 min)** : la charge moyenne en pourcentage d'un cœur de
+  processeur (un routeur à 4 cœurs tous occupés affiche 400 %).
+- **Mémoire utilisée**, en pourcentage.
+- **Temps de fonctionnement**, en heures.
+- **Version d'OpenWrt** (`23.05.5`).
+- **Clients Wi-Fi** par radio (`Clients Wi-Fi 2.4 GHz`, `5 GHz`…) : les
+  stations connectées et autorisées.
+- **Wi-Fi invité activé**, quand un réseau invité est choisi.
+- Pour chaque interface WAN : **Débit descendant** et **Débit montant**
+  (Mbit/s, la moyenne sur l'intervalle de rafraîchissement) et **Lien WAN** (1
+  quand il est actif).
+
+Rien sur ces appareils n'est un interrupteur : un assistant vocal ne peut pas
+éteindre le Wi-Fi invité ni redémarrer le routeur par erreur.
+
+### Capteurs de présence
+
+Chaque client ajouté devient un capteur de **Présence** : présent tant qu'il
+est connecté (et autorisé) au Wi-Fi du routeur, absent une fois qu'il n'a pas
+été vu pendant le **délai de départ** (5 minutes par défaut) : un téléphone en
+veille quitte le Wi-Fi quelques minutes.
+
+- Un routeur illisible ne change personne : une panne n'envoie jamais toute la
+  maison dehors.
+- Les appareils filaires ne sont pas sur le Wi-Fi : cochez **Compter un bail
+  DHCP comme présent** pour eux, en sachant qu'un bail dure jusqu'à son
+  expiration (12 h par défaut).
+- Les téléphones utilisent une adresse MAC privée (aléatoire) par réseau Wi-Fi
+  : suivez l'adresse que le téléphone utilise sur votre réseau, et gardez-la
+  fixe dans ses réglages Wi-Fi.
 
 ## Tableau de bord
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+- **Routeur OpenWrt** : charge, mémoire, débits du premier WAN, clients Wi-Fi,
+  état de chaque lien WAN, de chaque radio et du Wi-Fi invité, temps de
+  fonctionnement et version. Avec les commandes autorisées : un bouton **Wi-Fi
+  invité** (son icône montre l'état actuel) et un bouton **Redémarrer**, tous
+  deux avec confirmation.
+- **Appareils présents** : les appareils suivis, présents d'abord, avec le
+  temps depuis un départ ; un réglage n'affiche que les présents.
+
+## Scènes
+
+### Déclencheurs
+
+- **Appareil inconnu connecté** : une adresse MAC jamais vue s'est connectée au
+  Wi-Fi ou a obtenu un bail DHCP. La première lecture apprend le réseau tel
+  qu'il est ; les adresses vues sont gardées dans `/data`. Filtres : **Vu par**
+  (Wi-Fi ou bail DHCP) et **Réseau Wi-Fi (SSID)**. Variables : adresse MAC,
+  adresse IP, nom d'hôte, SSID, interface Wi-Fi.
+- **Lien WAN coupé** : une interface WAN est tombée. Filtre : **Interface WAN
+  (ex. wan)**.
+- **Lien WAN rétabli** : elle est de nouveau active ; la variable _Durée de la
+  coupure (minutes)_ donne la durée de la coupure.
+
+### Actions
+
+Les actions ne font rien tant que **Autoriser les commandes** n'est pas coché,
+et le routeur les refuse si l'ACL n'a pas de partie écriture.
+
+- **Allumer le Wi-Fi invité** et **Éteindre le Wi-Fi invité** : changent
+  l'option `disabled` de la section choisie et la valident ; OpenWrt recharge
+  le Wi-Fi (les autres réseaux clignotent quelques secondes). La sortie dit si
+  le Wi-Fi invité est activé.
+- **Redémarrer le routeur OpenWrt** : le réseau est coupé une à trois minutes.
+
+### Idées de scènes
+
+- Des invités arrivent : le samedi à 18 h, **Allumer le Wi-Fi invité** ; à
+  1 h, **Éteindre le Wi-Fi invité**.
+- Personne à la maison : quand les capteurs de présence des téléphones sont
+  tous absents, armez l'alarme et baissez le chauffage.
+- **Appareil inconnu connecté** sur votre SSID principal : envoyez un message
+  avec l'adresse MAC et le nom d'hôte.
+- **Lien WAN rétabli** après plus de 10 minutes : envoyez-vous la durée de la
+  coupure.
+
+## À quelle fréquence le routeur est lu
+
+À chaque intervalle de rafraîchissement, l'intégration appelle `system info`,
+`network.interface dump`, `network.device status`, `network.wireless status`,
+le `get_clients` de chaque point d'accès (ou `iwinfo assoclist`) et les baux
+DHCP : une dizaine de petites requêtes, en lecture seule, sur votre réseau
+local. Gladys n'interroge pas ces appareils : le minuteur est celui de
+l'intégration. Seules les valeurs qui changent sont envoyées à Gladys, avec un
+renvoi toutes les six heures.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« ni ubus ni LuCI RPC ici »** : installez `uhttpd-mod-ubus` (voir plus
+  haut), ou vérifiez l'adresse et le port.
+- **« nom d'utilisateur ou mot de passe refusé par rpcd »** : vérifiez le
+  login dans `/etc/config/rpcd` et redémarrez rpcd. Après un refus,
+  l'intégration attend cinq minutes avant de réessayer : cliquez sur **Tester
+  la connexion** pour réessayer tout de suite.
+- **« refusé par l'ACL rpcd »** : le fichier de l'ACL manque ou ne nomme pas
+  le login (`list read 'gladys'`) ; le rapport liste ce qui est illisible.
+- **« certificat refusé »** : cochez **Accepter un certificat auto-signé**.
+- **Aucun client Wi-Fi** : les points d'accès demandent `hostapd.*` dans
+  l'ACL ; avec un hostapd compilé sans ubus, `rpcd-mod-iwinfo` doit être
+  installé.
+- Logs : mettez `LOG_LEVEL=debug` sur le conteneur pour le détail de chaque
+  lecture (jamais un mot de passe ni une clé Wi-Fi).
+
+## Limites
+
+- Un routeur par intégration : les clients des autres points d'accès ne sont
+  pas vus sur leur Wi-Fi (l'option du bail DHCP les voit quand même).
+- Le lien WAN est l'état de l'interface : une panne derrière un lien actif
+  (côté opérateur) n'est pas vue. Les débits sont des moyennes sur
+  l'intervalle.
+- Le Wi-Fi invité est une section `wifi-iface`, nommée dans la configuration ;
+  un réseau désactivé n'est pas listé par OpenWrt (saisissez son nom).
+- Repli LuCI RPC : présence par la table des voisins (moins précise que le
+  Wi-Fi), temps de fonctionnement et redémarrage seulement ; pas de
+  déclencheur d'appareil inconnu.
+- Développée sans le matériel : la validation du Wi-Fi invité, le redémarrage
+  et le repli LuCI RPC ne sont pas testés sur un vrai routeur.

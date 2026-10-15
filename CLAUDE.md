@@ -9,15 +9,16 @@ A Gladys Assistant **external integration**: a Node.js service (Node 22+, ESM,
 no build step) that runs in its own sandboxed Docker container and talks to
 Gladys through
 [`@gladysassistant/integration-sdk`](https://github.com/GladysAssistant/integration-sdk-js),
-its only runtime dependency. It started from the official JavaScript template.
+its only runtime dependency. It started from the official JavaScript template,
+and follows OpenWrt routers over ubus (see the OpenWrt section at the end).
 
 ## Commands
 
 ```bash
 npm install
 npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+node --test test/hub.test.js              # one file
+node --test --test-name-pattern "guest"   # tests whose name matches
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
 npm run format                            # Prettier, fix in place
@@ -31,16 +32,26 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only (src/app.js does the registering)
+src/app.js                        registers every handler on a GladysIntegration or the fake Gladys
+src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
+src/hub.js                        the reading timer, states, scene events, commands, reports
+src/devices.js                    router and client (presence) devices: ids, features, names
+src/presence.js                   clients of a reading, departure delay
+src/openwrt/ubus.js               ubus over HTTP (/ubus JSON-RPC, rpcd session, renewal)
+src/openwrt/luci.js               LuCI RPC API (luci-mod-rpc), the fallback
+src/openwrt/client.js             interface choice (auto: ubus, else LuCI RPC) + the two backends' readings
+src/openwrt/model.js              readers of the OpenWrt answers (never keep a Wi-Fi key)
+src/openwrt/errors.js             error kinds (unreachable, tls, not_openwrt, auth, permission…)
+src/openwrt/http.js               the HTTP(S) POST of the clients (test seam)
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
 src/widgets.js                    dashboard widget handlers (manifest `widgets`)
-src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
+src/texts.js                      the four-language messages of the code
+src/store.js                      /data/openwrt-state.json (MACs already seen)
+scripts/probe.mjs                 read-only probe of a real router (run outside the session)
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys, same sections
+test/                             node --test, SDK fake Gladys + test/helpers/fakeOpenwrt.js
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +81,10 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** is in four languages (English, French, German with
+  "du", Spanish with "usted"): action messages, manifest texts, widget texts,
+  feature names and `docs/{en,fr,de,es}.md`, kept in sync. `test/i18n.test.js`
+  checks it.
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -233,3 +246,41 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## Intégration OpenWrt (15/10/2026)
+
+Développée **sans routeur** : les fixtures (`test/fixtures/openwrt/`) sont reconstruites depuis les sources
+d'OpenWrt (procd, netifd, hostapd `ubus.c`, rpcd `session.c`/`uci.c`/`iwinfo.c`/`file.c`, rpcd-mod-luci
+`luci.c`, uhttpd `ubus.c`), anonymisées (RFC 5737, RFC 7042). L'intégration HA `ubus` n'a pas de tests, HA
+`luci` et openwrt-luci-rpc (Apache-2.0) n'ont que des tests unitaires. Le test réel passe par
+`scripts/probe.mjs` (lecture seule, rapport sans adresse, MAC, nom, SSID ni clé), lancé ailleurs.
+
+- **ubus sur HTTP** : `POST /ubus`, JSON-RPC 2.0, `params: [session, objet, méthode, args]`. Réponse
+  `result: [statut ubus, données]` (0 ok, 4 introuvable, 6 refusé…) ou `error` de uhttpd : -32000 objet
+  inconnu (vérifié **avant** l'ACL), -32002 accès refusé — **même code pour une session expirée et pour un
+  objet que l'ACL refuse**. D'où : un -32002 rouvre une session une fois ; s'il revient, la paire
+  objet/méthode est retenue comme refusée par l'ACL (sinon une connexion par lecture). Une méthode inconnue
+  d'un objet existant donne `[3]`.
+- **Login** : `session login` avec la session nulle (32 zéros) ; mauvais mot de passe = `result: [6]`, pas une
+  erreur JSON-RPC. La session rpcd vit 300 s après son dernier usage. Le mot de passe d'un login rpcd peut
+  être un hash `uhttpd -m` (pas besoin de créer un utilisateur système).
+- **`network.wireless status` contient les clés Wi-Fi** (`config.key`) : `model.js` ne garde que noms, SSID,
+  mode et réseaux ; aucun journal ne contient de réponse brute (testé à `LOG_LEVEL=debug`).
+- **Une section `wifi-iface` désactivée n'apparaît pas** dans `network.wireless status` (netifd l'ignore à
+  la lecture de la config) et son objet `hostapd.*` disparaît : l'état du Wi-Fi invité se lit par `uci get`
+  de l'option `disabled` (jamais la section entière, qui contient la clé). Commande : `uci set` puis
+  `uci commit` dans la **même session** (rpcd range les changements par session) ; le commit émet
+  `config.change` et procd recharge le réseau (non vérifié sur matériel).
+- **MAC** : minuscules dans `hostapd get_clients`, majuscules dans `iwinfo assoclist` et `getDHCPLeases` :
+  tout passe par `normalizeMac`. `getDHCPLeases.expires` est le temps restant (0 = infini).
+- **Identité du routeur** : MAC d'`eth0` (port CPU d'un switch DSA), sinon premier Ethernet, sinon `br-lan`.
+- **WAN** : `wan` s'il existe, plus les interfaces qui portent la route IPv4 par défaut, retenues même
+  quand elles la perdent (une interface coupée perd sa route). Débits sur le `l3_device` (`pppoe-wan`) ;
+  un compteur qui recule (nouvelle session PPPoE) ne donne pas de débit ; deux lectures à moins d'une
+  seconde (test de connexion) gardent les débits précédents.
+- **Repli LuCI RPC** : `luci-mod-rpc` n'existe plus dans LuCI master (présent jusqu'en 23.05). Il ne sert
+  qu'à la présence par la table des voisins (`ip.neighbors`, sinon `sys.net.arptable`), filtrée sur les
+  ponts `br-*` pour écarter la box de l'opérateur, au temps de fonctionnement et au redémarrage.
+- **Pas d'ARP en ubus** : sur un petit réseau, les entrées STALE de Linux ne sont presque jamais purgées
+  (gc seulement au-delà de `gc_thresh1`) : l'ARP dirait présent un appareil parti. La présence filaire passe
+  par l'option du bail DHCP.

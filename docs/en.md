@@ -1,61 +1,237 @@
-# Demo Devices Template
+# OpenWrt
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Follow your [OpenWrt](https://openwrt.org) router or access point from Gladys,
+over your local network: who is at home (the phones connected to the Wi-Fi),
+the health of the router, the state and the rates of the internet link, the
+guest Wi-Fi. No cloud, no account.
 
-## What you get
+The integration talks to the router like LuCI, the web interface of OpenWrt,
+does: through **ubus over HTTP** (`/ubus`, rpcd sessions). A router without
+`/ubus` but with the LuCI RPC API (luci-mod-rpc) still gives the presence and
+the uptime.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+> **Developed without the hardware: feedback welcome.** The integration is
+> built and tested against the answers of OpenWrt read in its source code
+> (procd, netifd, hostapd, rpcd), not against a real router. Tell us what works
+> and what does not in the
+> [issues](https://github.com/guim31/gladys-openwrt/issues).
 
-## Configuration
+This project is not affiliated with the OpenWrt project. OpenWrt is a
+trademark of its owner.
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+## What you need
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+- Gladys Assistant **5.1.0** or later.
+- A router or access point on **OpenWrt 18.06 or later**, with `rpcd` and
+  `uhttpd-mod-ubus`. Both come with LuCI, so every standard image has them.
+  Check on the router: `ls /usr/lib/uhttpd_ubus.so` must show the file.
+  Without it: `opkg install rpcd uhttpd-mod-ubus` (`apk add` on OpenWrt 25),
+  then `/etc/init.d/uhttpd restart`.
+- An rpcd user for Gladys (below). `root` works too, but a dedicated user
+  only allowed to read is safer.
 
-## Actions
+## Set up
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+### The rpcd user and its ACL
 
-## Scenes
+1. Connect to the router with SSH and create the file
+   `/usr/share/rpcd/acl.d/gladys.json`. The `read` part is what the
+   integration reads; the `write` part is only used by the commands (guest
+   Wi-Fi, reboot):
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+   ```json
+   {
+     "gladys": {
+       "description": "Gladys Assistant",
+       "read": {
+         "ubus": {
+           "system": ["board", "info"],
+           "network.interface": ["dump"],
+           "network.device": ["status"],
+           "network.wireless": ["status"],
+           "hostapd.*": ["get_clients"],
+           "iwinfo": ["assoclist"],
+           "luci-rpc": ["getDHCPLeases"],
+           "file": ["read"],
+           "uci": ["get"]
+         },
+         "file": { "/tmp/dhcp.leases": ["read"] },
+         "uci": ["wireless"]
+       },
+       "write": {
+         "ubus": { "system": ["reboot"], "uci": ["set", "commit"] },
+         "uci": ["wireless"]
+       }
+     }
+   }
+   ```
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+2. Create the login, with a password of its own (`uhttpd -m` turns it into a
+   hash, so it is not stored in clear):
+
+   ```sh
+   uci add rpcd login
+   uci set rpcd.@login[-1].username='gladys'
+   uci set rpcd.@login[-1].password="$(uhttpd -m 'choose-a-long-password')"
+   uci add_list rpcd.@login[-1].read='gladys'
+   uci commit rpcd
+   /etc/init.d/rpcd restart
+   ```
+
+3. Only if you want the commands: give the login the write part too, with
+   `list write 'gladys'` in its section of `/etc/config/rpcd`, then
+   `/etc/init.d/rpcd restart`.
+
+Good to know: `network.wireless status` and `uci get wireless` can show the
+Wi-Fi keys to this user. The integration reads only the names, the SSIDs and
+the `disabled` option of the guest Wi-Fi, never stores a key and never writes
+one to its logs. The `uci` and `file` lines are optional: without them, the
+guest Wi-Fi and the leases of an old router without `luci-rpc` are not read.
+
+### The configuration
+
+In Gladys, open the integration, then **Configuration**:
+
+- **Router address**: the IP address of the router (`192.168.1.1` by
+  default), with `:port` when its web server uses another port.
+- **Use HTTPS**: encrypts the password on your network, when `luci-ssl` is
+  installed. A router that sends HTTP to HTTPS is followed anyway.
+- **Accept a self-signed certificate**: OpenWrt makes its own certificate at
+  first boot; tick it for your own router.
+- **User name** and **Password**: the rpcd login made above.
+- **Interface**: leave _Automatic_ (ubus, and LuCI RPC only when the router
+  has no `/ubus`).
+- **Refresh interval**: 10 s to 1 min (30 s by default).
+- **WAN interfaces**: empty, the integration takes `wan` and the interfaces
+  that hold the default route. Otherwise, the names of _Network → Interfaces_
+  (`wan, wwan`), up to four.
+- **Departure delay (minutes)** and **Count a DHCP lease as present**: see
+  the presence sensors below.
+- **Guest Wi-Fi network**: the name of the `wifi-iface` section of the guest
+  network (`guest`, `wifinet2`…). **List the Wi-Fi networks** shows them.
+- **Allow commands**: off by default (see the actions).
+- **Language of the names**: language of the device and feature names.
+
+Save, then click **Test the connection**: the report says which interface
+answered, the WAN interfaces and the radios found, the clients seen, and what
+the ACL does not allow.
+
+## The devices
+
+Open the **Discover** tab: the router and the network clients it sees are
+listed. Add the ones you want.
+
+### The router
+
+- **System load (1 min)**: the load average in percent of one processor
+  core (a router with 4 cores fully busy reads 400 %).
+- **Memory used**, in percent.
+- **Uptime**, in hours.
+- **OpenWrt version** (`23.05.5`).
+- **Wi-Fi clients** per radio (`Wi-Fi clients 2.4 GHz`, `5 GHz`…): the
+  stations connected and authorized.
+- **Guest Wi-Fi enabled**, when a guest network is chosen.
+- For each WAN interface: **Download** and **Upload** rates (Mbit/s, the
+  average over the refresh interval) and **WAN link** (1 when up).
+
+Nothing on these devices is a switch: a voice assistant cannot turn the guest
+Wi-Fi off or reboot the router by mistake.
+
+### Presence sensors
+
+Each client you add becomes a **Presence** sensor: present while it is
+connected (and authorized) on the Wi-Fi of the router, away once it has not
+been seen for the **departure delay** (5 minutes by default): a sleeping phone
+leaves the Wi-Fi for a few minutes.
+
+- A router that cannot be read changes nobody: an outage never sends the
+  household away.
+- Wired devices are not on the Wi-Fi: tick **Count a DHCP lease as present**
+  for them, knowing that a lease lasts until it expires (12 h by default).
+- Phones use a private (random) MAC address per Wi-Fi network: follow the
+  address the phone uses on your network, and keep it fixed in its Wi-Fi
+  settings.
 
 ## Dashboard
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+- **OpenWrt router**: load, memory, the rates of the first WAN, the Wi-Fi
+  clients, the state of each WAN link, each radio and the guest Wi-Fi, the
+  uptime and the version. With the commands allowed: a **Guest Wi-Fi** button
+  (its icon shows the current state) and a **Reboot** button, both with
+  confirmation.
+- **Devices at home**: the followed devices, present first, with the time
+  since a departure; a setting shows the present ones only.
+
+## Scenes
+
+### Triggers
+
+- **Unknown device connected**: a MAC address never seen before joined the
+  Wi-Fi or got a DHCP lease. The first reading learns the network as it is;
+  the addresses seen are kept in `/data`. Filters: **Seen through** (Wi-Fi or
+  DHCP lease) and **Wi-Fi network (SSID)**. Variables: MAC address, IP
+  address, host name, SSID, Wi-Fi interface.
+- **WAN link down**: a WAN interface went down. Filter: **WAN interface (e.g.
+  wan)**.
+- **WAN link restored**: it is up again; the variable _Outage length
+  (minutes)_ gives the length of the outage.
+
+### Actions
+
+The actions do nothing until **Allow commands** is ticked, and the router
+refuses them when the ACL has no write part.
+
+- **Turn on the guest Wi-Fi** and **Turn off the guest Wi-Fi**: change the
+  `disabled` option of the chosen section and commit it; OpenWrt reloads the
+  Wi-Fi (the other networks blink for a few seconds). The output tells whether
+  the guest Wi-Fi is enabled.
+- **Reboot the OpenWrt router**: the network is cut for one to three minutes.
+
+### Scene ideas
+
+- Guests are coming: at 6 pm on Saturdays, **Turn on the guest Wi-Fi**; at
+  1 am, **Turn off the guest Wi-Fi**.
+- Nobody home: when the presence sensors of the phones are all away, arm the
+  alarm and lower the heating.
+- **Unknown device connected** on your main SSID: send a message with the MAC
+  address and the host name.
+- **WAN link restored** after more than 10 minutes: send yourself the length
+  of the outage.
+
+## How often the router is read
+
+Every refresh interval, the integration calls `system info`,
+`network.interface dump`, `network.device status`, `network.wireless status`,
+the `get_clients` of each access point (or `iwinfo assoclist`) and the DHCP
+leases: about ten small requests, read-only, on your local network. Gladys
+does not poll these devices: the timer is the integration's own. Only the
+values that change are sent to Gladys, with a heartbeat every six hours.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"no ubus nor LuCI RPC here"**: install `uhttpd-mod-ubus` (see above), or
+  check the address and the port.
+- **"user name or password refused by rpcd"**: check the login in
+  `/etc/config/rpcd` and restart rpcd. After a refusal, the integration waits
+  five minutes before trying again: click **Test the connection** to try now.
+- **"refused by the rpcd ACL"**: the file of the ACL is missing or does not
+  name the login (`list read 'gladys'`); the report lists what is not
+  readable.
+- **"certificate refused"**: tick **Accept a self-signed certificate**.
+- **No Wi-Fi client**: the access points need `hostapd.*` in the ACL; on a
+  build of hostapd without ubus, `rpcd-mod-iwinfo` must be installed.
+- Logs: set `LOG_LEVEL=debug` on the container for the details of each
+  reading (never a password nor a Wi-Fi key).
+
+## Limits
+
+- One router per integration: the clients of other access points are not
+  seen on their Wi-Fi (the DHCP lease option still sees them).
+- The WAN link is the state of the interface: an outage behind a working link
+  (the ISP side) is not seen. The rates are averages over the interval.
+- The guest Wi-Fi is one `wifi-iface` section, named in the configuration; a
+  disabled network is not listed by OpenWrt (type its name).
+- LuCI RPC fallback: presence from the neighbour table (less precise than the
+  Wi-Fi), the uptime and the reboot only; no unknown-device trigger.
+- Developed without the hardware: the guest Wi-Fi commit, the reboot and the
+  LuCI RPC fallback are untested on a real router.
